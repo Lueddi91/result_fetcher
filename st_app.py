@@ -5,6 +5,7 @@ import os
 
 from pathlib import Path
 from race_analytics import RaceAnalytics, time_to_seconds, seconds_to_time
+from result_fetcher import main as rf_main
 
 INDICES = ["Swim", "T1", "Bike", "T2", "Run", "Zielzeit"]
 INDICES_PLACING = [
@@ -51,6 +52,7 @@ def is_valid_time_format(time_str):
     Returns True if valid, False otherwise
     """
     import re
+
     if not time_str:
         return False
     time_str = str(time_str).strip()
@@ -84,15 +86,21 @@ def get_own_times(df, wettkampf):
                 invalid_times.append("Run")
 
             if invalid_times:
-                st.warning(f"Falsches Format: {', '.join(invalid_times)}. Bitte verwende das Format mm:ss (z.B. 10:30)")
+                st.warning(
+                    f"Falsches Format: {', '.join(invalid_times)}. Bitte verwende das Format mm:ss (z.B. 10:30)"
+                )
                 return
 
             swim_sec = time_to_seconds(swim_input)
             bike_sec = time_to_seconds(bike_input)
             run_sec = time_to_seconds(run_input)
 
-            t1_avg = time_to_seconds(overall_stats[overall_stats["Metric"] == "T1"]["Mean"].values[0])
-            t2_avg = time_to_seconds(overall_stats[overall_stats["Metric"] == "T2"]["Mean"].values[0])
+            t1_avg = time_to_seconds(
+                overall_stats[overall_stats["Metric"] == "T1"]["Mean"].values[0]
+            )
+            t2_avg = time_to_seconds(
+                overall_stats[overall_stats["Metric"] == "T2"]["Mean"].values[0]
+            )
 
             t1_estimated = t1_avg if t1_avg else 0
             t2_estimated = t2_avg if t2_avg else 0
@@ -173,7 +181,9 @@ def display_comparison(df):
         for col in ["Swim", "T1", "Bike", "T2", "Run"]
     }
     avg_seconds = {
-        col: time_to_seconds(overall_stats[overall_stats["Metric"] == col]["Mean"].values[0])
+        col: time_to_seconds(
+            overall_stats[overall_stats["Metric"] == col]["Mean"].values[0]
+        )
         for col in ["Swim", "T1", "Bike", "T2", "Run"]
     }
 
@@ -194,8 +204,7 @@ def display_comparison(df):
 
     placing_data = {
         "Platzierung": {
-            i: int(athlete_data[INDICES_PLACING[i]].values[0])
-            for i in range(5)
+            i: int(athlete_data[INDICES_PLACING[i]].values[0]) for i in range(5)
         }
     }
     st.bar_chart(data=placing_data, y_label="Platz", color="#C3423F")
@@ -263,7 +272,9 @@ def display_own_times(df):
             st.metric(label=label, value=avg_time)
 
     avg_seconds = {
-        col: time_to_seconds(overall_stats[overall_stats["Metric"] == col]["Mean"].values[0])
+        col: time_to_seconds(
+            overall_stats[overall_stats["Metric"] == col]["Mean"].values[0]
+        )
         for col in ["Swim", "T1", "Bike", "T2", "Run"]
     }
 
@@ -297,6 +308,9 @@ def main():
 
     with st.container(border=True, width="content"):
         st.header("LaLi Hamburg Analytics")
+
+    if st.button("Fetch Data"):
+        rf_main()
 
     csv_files = get_csv_files()
 
