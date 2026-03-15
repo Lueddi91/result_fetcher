@@ -1,5 +1,5 @@
 pandas
 requests
-streamlit
+streamlit==1.54.0
 openpyxl
 altair<5
