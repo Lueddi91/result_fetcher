@@ -19,15 +19,30 @@ INDICES_PLACING = [
 
 
 def get_csv_files():
+    import re
+
     cwd = Path.cwd()
     filenames = os.listdir(cwd)
     csv_files = [filename for filename in filenames if filename.endswith(".csv")]
-    return csv_files
+    display_names = []
+    for filename in csv_files:
+        if filename.startswith("raceresult_") and filename.endswith("_export.csv"):
+            name_part = filename[11:-11]
+            match = re.search(r"(\d{4})$", name_part)
+            if match:
+                year = match.group(1)
+                race_name = name_part[: match.start()].strip()
+                display_names.append((f"{race_name} ({year})", filename))
+            else:
+                display_names.append((name_part, filename))
+        else:
+            display_names.append((filename, filename))
+    return display_names
 
 
 def get_information(df):
     with st.container():
-        wettkampf_select = st.radio(
+        wettkampf_select = st.selectbox(
             label="Welches Rennen möchtest du vergleichen?",
             options=pd.Series(df["Wettkampf"].unique()),
         )
@@ -195,19 +210,17 @@ def display_comparison(df):
         st.session_state["athlete"]: cumulative_athlete,
     }
 
+    st.subheader(
+        "Kumulierte Zeiten gegenüber dem Durchschnitt (weniger ist besser)",
+        text_alignment="center",
+    )
+
     st.line_chart(
         data=chart_data,
         y_label="Zeit [s]",
         x_label=st.session_state["athlete"],
         color=["#9BC53D", "#C3423F"],
     )
-
-    placing_data = {
-        "Platzierung": {
-            i: int(athlete_data[INDICES_PLACING[i]].values[0]) for i in range(5)
-        }
-    }
-    st.bar_chart(data=placing_data, y_label="Platz", color="#C3423F")
 
     st.subheader(
         "0 : Swim | 1 : T1 | 2 : Bike | 3 : T2 | 4 : Run | 5 : Finish",
@@ -306,17 +319,38 @@ def main():
     st.session_state["data_set"] = False
     st.session_state["own_times_calculated"] = False
 
-    with st.container(border=True, width="content"):
-        st.header("LaLi Hamburg Analytics")
+    st.title("Triathlon LaLi/VeLi HH Analytics", text_alignment="center")
 
+    st.markdown("""
+                #### :rotating_light: Wie geht das hier?
+                Du wählst ein Event und ein Rennen (Lali M/W oder VeLi) aus. Wenn du selbst gestartet bist kannst du deine eigenen Zeiten aus der Teilnehmerlist
+                einlesen, ansonsten kannst du den Modus wechseln und eigene Zeiten eingeben, um zu gucken wie du dich in diesem Rennen geschlagen hättest.
+                Bei der Eingabe von eigenen Zeiten werden die Wechselzeiten mit dem Durschnitt des jeweiligenen Wettbewerbes angenähert. 
+                Nach Klick auf "Daten eingeben" erscheint eine Übersicht mit der Relation deiner eigenen Zeiten zum Durschnitt sowie eine grafische Übersicht,
+                wie sich deine Zeiten im Vergleich zum Durchschnitt entwickelt haben. 
+                Falls die Auswahlbox unter "Event auswählen" leer ist, klick bitte den Button mit der Aufschrift "Fetch Data"
+                #### :sos: Ich sehe rote Kästen mit komischem Text?!
+                Dann gab es wahrscheinlich einen Fehler. Ich (Daniel) hab das hier sehr wahrscheinlich nicht komplett fehlerfrei zusammengebastelt.
+                Das ist für dich nur ärgerlich, aber nicht schlimm. Wenn das passiert, sag mir aber gerne Bescheid, dann muss das hoffentlich außer dir niemand 
+                anderem passieren.
+                #### :bulb: Ich hab noch eine tolle Idee, was man mit den Daten machen könnte!
+                Dann gibt es zwei Möglichkeiten:
+                - Du kannst selber ein bisschen programmieren und beteiligst dich einfach [HIER](https://github.com/Lueddi91/result_fetcher) 
+                - Du schickst mir deine Idee und vielleicht kriegen wir das hin :-)
+                """)
     if st.button("Fetch Data"):
         rf_main()
 
+    st.divider()
     csv_files = get_csv_files()
 
-    selected_race = st.radio(
-        label="Select the event:",
-        options=csv_files,
+    selected_race_display = st.selectbox(
+        label="Event auswählen:",
+        options=[item[0] for item in csv_files],
+    )
+
+    selected_race = next(
+        (item[1] for item in csv_files if item[0] == selected_race_display), None
     )
 
     if selected_race:
@@ -324,25 +358,34 @@ def main():
 
         mode = st.radio(
             label="Modus auswählen:",
-            options=["Comparison mode", "Enter own Times"],
+            options=["Ich habe teilgenommen", "Ich möchte eigene Zeiten eingeben"],
             horizontal=True,
         )
         st.session_state["mode"] = mode
 
-        if mode == "Comparison mode":
-            get_information(df)
-            if st.session_state["data_set"]:
-                display_comparison(df)
-        else:
-            wettkampf_select = st.selectbox(
-                label="Welches Rennen möchtest du vergleichen?",
-                options=pd.Series(df["Wettkampf"].unique()),
-            )
-            st.session_state["wettkampf"] = wettkampf_select
-            get_own_times(df, wettkampf_select)
+        individual_comparison, team_comparison = st.tabs(["Individual", "Teams"])
 
-            if st.session_state.get("own_times_calculated"):
-                display_own_times(df)
+        with individual_comparison:
+            if mode == "Ich habe teilgenommen":
+                get_information(df)
+                if st.session_state["data_set"]:
+                    display_comparison(df)
+            else:
+                wettkampf_select = st.selectbox(
+                    label="Welches Rennen möchtest du vergleichen?",
+                    options=pd.Series(df["Wettkampf"].unique()),
+                )
+                st.session_state["wettkampf"] = wettkampf_select
+                get_own_times(df, wettkampf_select)
+
+                if st.session_state.get("own_times_calculated"):
+                    display_own_times(df)
+
+        with team_comparison:
+            st.markdown("""
+                        ### TBC
+                        Hier kommen hoffentlich bald Vergleichen zwischen den einzelnen Mannschaften.
+                        """)
 
 
 if __name__ == "__main__":
