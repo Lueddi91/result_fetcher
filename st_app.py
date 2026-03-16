@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import altair as alt
 
 import os
 
@@ -165,32 +167,6 @@ def display_comparison(df):
         f"Gewertete AthletInnen: {int(df.loc[df['Wettkampf'] == st.session_state['wettkampf'], ['Platzierung']].max().values[0])}"
     )
 
-    platzierungen = {"Durchschnitt": [], st.session_state["athlete"]: []}
-    col1, col2, col3 = st.columns(3)
-
-    for index in INDICES:
-        counter = INDICES.index(index)
-        label = index
-        delta = seconds_to_time(
-            time_to_seconds(athlete_data[index].values[0])
-            - time_to_seconds(overall_stats["Mean"].values[counter])
-        )
-        with col1:
-            st.metric(
-                label=label,
-                value=athlete_data[index].values[0],
-                delta=delta,
-                delta_color="inverse",
-            )
-        with col2:
-            st.metric(
-                label=INDICES_PLACING[counter],
-                value=int(athlete_data[INDICES_PLACING[counter]].values[0]),
-            )
-        with col3:
-            label = f"Durchschnitt {INDICES[counter]}"
-            st.metric(label=label, value=overall_stats["Mean"].values[counter])
-
     athlete_seconds = {
         col: time_to_seconds(athlete_data[col].values[0])
         for col in ["Swim", "T1", "Bike", "T2", "Run"]
@@ -210,22 +186,50 @@ def display_comparison(df):
         st.session_state["athlete"]: cumulative_athlete,
     }
 
-    st.subheader(
-        "Kumulierte Zeiten gegenüber dem Durchschnitt (weniger ist besser)",
-        text_alignment="center",
-    )
+    col1, col2 = st.columns(2)
+    with col1:
+        platzierungen = {"Durchschnitt": [], st.session_state["athlete"]: []}
+        col_a, col_b, col_c = st.columns(3)
 
-    st.line_chart(
-        data=chart_data,
-        y_label="Zeit [s]",
-        x_label=st.session_state["athlete"],
-        color=["#9BC53D", "#C3423F"],
-    )
+        for index in INDICES:
+            counter = INDICES.index(index)
+            label = index
+            delta = seconds_to_time(
+                time_to_seconds(athlete_data[index].values[0])
+                - time_to_seconds(overall_stats["Mean"].values[counter])
+            )
+            with col_a:
+                st.metric(
+                    label=label,
+                    value=athlete_data[index].values[0],
+                    delta=delta,
+                    delta_color="inverse",
+                )
+            with col_b:
+                st.metric(
+                    label=INDICES_PLACING[counter],
+                    value=int(athlete_data[INDICES_PLACING[counter]].values[0]),
+                )
+            with col_c:
+                label = f"Durchschnitt {INDICES[counter]}"
+                st.metric(label=label, value=overall_stats["Mean"].values[counter])
+    with col2:
+        st.subheader(
+            "Kumulierte Zeiten gegenüber dem Durchschnitt (weniger ist besser)",
+            text_alignment="center",
+        )
 
-    st.subheader(
-        "0 : Swim | 1 : T1 | 2 : Bike | 3 : T2 | 4 : Run | 5 : Finish",
-        text_alignment="center",
-    )
+        st.line_chart(
+            data=chart_data,
+            y_label="Zeit [s]",
+            x_label=st.session_state["athlete"],
+            color=["#9BC53D", "#C3423F"],
+        )
+
+        st.subheader(
+            "0 : Swim | 1 : T1 | 2 : Bike | 3 : T2 | 4 : Run | 5 : Finish",
+            text_alignment="center",
+        )
 
 
 def display_own_times(df):
@@ -252,38 +256,6 @@ def display_own_times(df):
         else:
             ranks[col] = "- / -"
 
-    st.subheader("Deine Ergebnisse")
-
-    col1, col2, col3 = st.columns(3)
-
-    for index in INDICES:
-        counter = INDICES.index(index)
-        label = index
-
-        user_time = own_times.get(index, "0:00")
-        avg_time = overall_stats["Mean"].values[counter]
-
-        user_sec = time_to_seconds(user_time)
-        avg_sec = time_to_seconds(avg_time)
-
-        delta = seconds_to_time(user_sec - avg_sec)
-
-        with col1:
-            st.metric(
-                label=label,
-                value=user_time,
-                delta=delta,
-                delta_color="inverse",
-            )
-        with col2:
-            st.metric(
-                label=f"Platzierung {label}",
-                value=ranks.get(index, "- / -"),
-            )
-        with col3:
-            label = f"Durchschnitt {INDICES[counter]}"
-            st.metric(label=label, value=avg_time)
-
     avg_seconds = {
         col: time_to_seconds(
             overall_stats[overall_stats["Metric"] == col]["Mean"].values[0]
@@ -299,17 +271,51 @@ def display_own_times(df):
         athlete: cumulative_own,
     }
 
-    st.line_chart(
-        data=chart_data,
-        y_label="Zeit [s]",
-        x_label=athlete,
-        color=["#9BC53D", "#C3423F"],
-    )
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Deine Ergebnisse")
 
-    st.subheader(
-        "0 : Swim | 1 : T1 | 2 : Bike | 3 : T2 | 4 : Run | 5 : Finish",
-        text_alignment="center",
-    )
+        col_a, col_b, col_c = st.columns(3)
+
+        for index in INDICES:
+            counter = INDICES.index(index)
+            label = index
+
+            user_time = own_times.get(index, "0:00")
+            avg_time = overall_stats["Mean"].values[counter]
+
+            user_sec = time_to_seconds(user_time)
+            avg_sec = time_to_seconds(avg_time)
+
+            delta = seconds_to_time(user_sec - avg_sec)
+
+            with col_a:
+                st.metric(
+                    label=label,
+                    value=user_time,
+                    delta=delta,
+                    delta_color="inverse",
+                )
+            with col_b:
+                st.metric(
+                    label=f"Platzierung {label}",
+                    value=ranks.get(index, "- / -"),
+                )
+            with col_c:
+                label = f"Durchschnitt {INDICES[counter]}"
+                st.metric(label=label, value=avg_time)
+    with col2:
+        st.line_chart(
+            data=chart_data,
+            y_label="Zeit [s]",
+            x_label=athlete,
+            color=["#9BC53D", "#C3423F"],
+        )
+
+        st.subheader(
+            "0 : Swim | 1 : T1 | 2 : Bike | 3 : T2 | 4 : Run | 5 : Finish",
+            text_alignment="center",
+        )
 
 
 def main():
@@ -363,7 +369,9 @@ def main():
         )
         st.session_state["mode"] = mode
 
-        individual_comparison, team_comparison = st.tabs(["Individual", "Teams"])
+        individual_comparison, team_comparison, top_10 = st.tabs(
+            ["Individual", "Teams", "TOP 10"]
+        )
 
         with individual_comparison:
             if mode == "Ich habe teilgenommen":
@@ -382,10 +390,214 @@ def main():
                     display_own_times(df)
 
         with team_comparison:
-            st.markdown("""
-                        ### TBC
-                        Hier kommen hoffentlich bald Vergleichen zwischen den einzelnen Mannschaften.
-                        """)
+            wettkampf_team = st.selectbox(
+                label="Welches Rennen möchtest du vergleichen?",
+                options=pd.Series(df["Wettkampf"].unique()),
+                key="wettkampf_team",
+            )
+
+            division_df = df.loc[df["Wettkampf"] == wettkampf_team].copy()
+
+            disciplines = ["Swim", "Bike", "Run", "Zielzeit"]
+            for col in disciplines:
+                division_df[f"{col}_seconds"] = division_df[col].apply(time_to_seconds)
+
+            team_avg = (
+                division_df.groupby("Team")[[f"{d}_seconds" for d in disciplines]]
+                .mean()
+                .reset_index()
+                .sort_values("Zielzeit_seconds", ascending=True)
+            )
+
+            chart_data = team_avg.melt(
+                id_vars="Team", var_name="Discipline", value_name="Seconds"
+            )
+            chart_data["Discipline"] = chart_data["Discipline"].str.replace(
+                "_seconds", ""
+            )
+
+            def highlight_minmax(df, seconds_df):
+                green = "#228B22"
+                red = "#CD5C5C"
+
+                styled = pd.DataFrame("", index=df.index, columns=df.columns)
+                for col in df.columns:
+                    if col == "Team":
+                        continue
+                    col_sec = f"{col}_seconds"
+                    min_val = seconds_df[col_sec].min()
+                    max_val = seconds_df[col_sec].max()
+                    styled.loc[seconds_df[col_sec] == min_val, col] = (
+                        f"background-color: {green}"
+                    )
+                    styled.loc[seconds_df[col_sec] == max_val, col] = (
+                        f"background-color: {red}"
+                    )
+                return styled
+
+            team_avg_display = team_avg.copy()
+            team_avg_seconds = team_avg.copy()
+            for col in disciplines:
+                team_avg_display[col] = team_avg[f"{col}_seconds"].apply(
+                    seconds_to_time
+                )
+            team_avg_display = team_avg_display.drop(
+                columns=[f"{d}_seconds" for d in disciplines]
+            )
+
+            st.subheader("Durchschnittliche Zeiten pro Team")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.bar_chart(
+                    chart_data, x="Discipline", y="Seconds", color="Team", stack=False
+                )
+            with col2:
+                st.subheader("Detailansicht: Durchschnittszeiten")
+                st.dataframe(
+                    team_avg_display.style.apply(
+                        lambda x: highlight_minmax(x, team_avg_seconds), axis=None
+                    ),
+                    use_container_width=True,
+                )
+
+            st.divider()
+
+            division_df_ranked = division_df[division_df["gewertet"] == "*"].copy()
+            team_avg_ranked = (
+                division_df_ranked.groupby("Team")[
+                    [f"{d}_seconds" for d in disciplines]
+                ]
+                .mean()
+                .reset_index()
+                .sort_values("Zielzeit_seconds", ascending=True)
+            )
+
+            chart_data_ranked = team_avg_ranked.melt(
+                id_vars="Team", var_name="Discipline", value_name="Seconds"
+            )
+            chart_data_ranked["Discipline"] = chart_data_ranked[
+                "Discipline"
+            ].str.replace("_seconds", "")
+
+            team_avg_ranked_display = team_avg_ranked.copy()
+            team_avg_ranked_seconds = team_avg_ranked.copy()
+            for col in disciplines:
+                team_avg_ranked_display[col] = team_avg_ranked[f"{col}_seconds"].apply(
+                    seconds_to_time
+                )
+            team_avg_ranked_display = team_avg_ranked_display.drop(
+                columns=[f"{d}_seconds" for d in disciplines]
+            )
+
+            st.subheader("Nur gewertete Athleten (mit *)")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.bar_chart(
+                    chart_data_ranked,
+                    x="Discipline",
+                    y="Seconds",
+                    color="Team",
+                    stack=False,
+                )
+            with col2:
+                st.subheader("Detailansicht: Durchschnittszeiten (gewertet)")
+                st.dataframe(
+                    team_avg_ranked_display.style.apply(
+                        lambda x: highlight_minmax(x, team_avg_ranked_seconds),
+                        axis=None,
+                    ),
+                    use_container_width=True,
+                )
+
+        with top_10:
+            wettkampf_top10 = st.selectbox(
+                label="Welches Rennen möchtest du vergleichen?",
+                options=pd.Series(df["Wettkampf"].unique()),
+                key="wettkampf_top10",
+            )
+
+            division_df_top10 = df.loc[df["Wettkampf"] == wettkampf_top10].copy()
+
+            for col in ["Swim", "T1", "Bike", "T2", "Run"]:
+                division_df_top10[f"{col}_seconds"] = division_df_top10[col].apply(
+                    time_to_seconds
+                )
+
+            top10_df = division_df_top10.nsmallest(10, "Platzierung")
+
+            disciplines = ["Swim", "T1", "Bike", "T2", "Run"]
+
+            for col in disciplines:
+                top10_df[f"{col}_sec"] = top10_df[col].apply(time_to_seconds)
+
+            chart_data_top10 = top10_df.melt(
+                id_vars=["Name"],
+                value_vars=[f"{d}_sec" for d in disciplines],
+                var_name="Discipline",
+                value_name="Seconds",
+            )
+            chart_data_top10["Discipline"] = chart_data_top10["Discipline"].str.replace(
+                "_sec", ""
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("TOP 10 - Zeiten")
+                chart = (
+                    alt.Chart(chart_data_top10)
+                    .mark_bar()
+                    .encode(
+                        x=alt.X("Seconds:Q", stack="zero"),
+                        y=alt.Y("Name:N", sort="x"),
+                        color=alt.Color(
+                            "Discipline:N", scale=alt.Scale(domain=disciplines)
+                        ),
+                    )
+                )
+                st.altair_chart(chart, use_container_width=True)
+            with col2:
+                st.subheader("Detailansicht")
+                display_df = top10_df[
+                    [
+                        "Platzierung",
+                        "Name",
+                        "Team",
+                        "Swim",
+                        "T1",
+                        "Bike",
+                        "T2",
+                        "Run",
+                        "Zielzeit",
+                    ]
+                ].copy()
+
+                def highlight_minmax_top10(df, seconds_df):
+                    green = "#228B22"
+                    red = "#CD5C5C"
+                    styled = pd.DataFrame("", index=df.index, columns=df.columns)
+                    for col in df.columns:
+                        if col in ["Platzierung", "Name", "Team"]:
+                            continue
+                        col_sec = f"{col}_sec" if col != "Zielzeit" else col
+                        if col_sec in seconds_df.columns:
+                            min_val = seconds_df[col_sec].min()
+                            max_val = seconds_df[col_sec].max()
+                            styled.loc[seconds_df[col_sec] == min_val, col] = (
+                                f"background-color: {green}"
+                            )
+                            styled.loc[seconds_df[col_sec] == max_val, col] = (
+                                f"background-color: {red}"
+                            )
+                    return styled
+
+                st.dataframe(
+                    display_df.style.apply(
+                        lambda x: highlight_minmax_top10(x, top10_df), axis=None
+                    ),
+                    use_container_width=True,
+                )
 
 
 if __name__ == "__main__":
